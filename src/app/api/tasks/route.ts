@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/supabase/server";
+import { connectAppleClient, ensureCadenceCalendar, createAppleEvent } from "@/lib/caldav";
+import { decryptSecret } from "@/lib/encrypt";
 
 export async function GET(request: Request) {
   try {
@@ -42,19 +44,54 @@ export async function POST(request: Request) {
     };
     if (!row.title) return NextResponse.json({ error: "title required" }, { status: 400 });
 
-    const { data, error } = await supabase.from("tasks").insert(row).select("*").single();
+    const { data: task, error } = await supabase.from("tasks").insert(row).select("*").single();
     if (error) throw error;
 
-    // Best-effort: if scheduled, write to Apple Calendar (non-blocking)
-    if (row.scheduled_start) {
-      fetch(new URL("/api/calendar/events", request.url), {
-        method: "POST",
-        headers: { "Content-Type": "application/json", cookie: request.headers.get("cookie") ?? "" },
-        body: JSON.stringify({ taskId: data.id }),
-      }).catch(() => {});
+    // Write to Apple Calendar inline (so errors surface) but never block the task create.
+    if (task?.scheduled_start && task?.scheduled_end) {
+      try {
+        const { data: account } = await supabase
+          .from("calendar_accounts")
+          .select("*")
+          .eq("user_id", user.id)
+          .maybeSingle();
+
+        if (account) {
+          const password = decryptSecret(account.password_ciphertext);
+          const client = await connectAppleClient(account.username, password);
+          const calUrl = await ensureCadenceCalendar(client);
+          const { uid } = await createAppleEvent(client, calUrl, {
+            title: task.title,
+            description: task.notes ?? undefined,
+            start: new Date(task.scheduled_start),
+            end: new Date(task.scheduled_end),
+          });
+
+          const { data: evt } = await supabase
+            .from("calendar_events")
+            .insert({
+              user_id: user.id,
+              account_id: account.id,
+              external_uid: uid,
+              title: task.title,
+              starts_at: task.scheduled_start,
+              ends_at: task.scheduled_end,
+              source: "cadence",
+              linked_task_id: task.id,
+            })
+            .select("id")
+            .single();
+          if (evt) {
+            await supabase.from("tasks").update({ external_event_id: evt.id }).eq("id", task.id);
+          }
+        }
+      } catch (calErr) {
+        // Log but don't fail the task creation — user will see task saved; calendar write is best-effort.
+        console.warn("calendar writeback failed:", (calErr as Error).message);
+      }
     }
 
-    return NextResponse.json(data);
+    return NextResponse.json(task);
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 400 });
   }
