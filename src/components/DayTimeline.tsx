@@ -81,13 +81,17 @@ export function DayTimeline({
   dayEnd.setHours(endHour, 0, 0, 0);
 
   const items = useMemo<Item[]>(() => {
-    const a: Item[] = events.map((e) => ({
-      kind: "event" as const,
-      id: `e-${e.id}`,
-      start: new Date(e.starts_at),
-      end: new Date(e.ends_at),
-      event: e,
-    }));
+    // Calendar events: drop anything that's the mirror of a Cadence-scheduled
+    // task — those will render as tasks instead of doubling up.
+    const a: Item[] = events
+      .filter((e) => !e.linked_task_id && e.source !== "cadence")
+      .map((e) => ({
+        kind: "event" as const,
+        id: `e-${e.id}`,
+        start: new Date(e.starts_at),
+        end: new Date(e.ends_at),
+        event: e,
+      }));
     const b: Item[] = tasks
       .filter((t) => t.scheduled_start && t.scheduled_end)
       .map((t) => ({
@@ -97,13 +101,13 @@ export function DayTimeline({
         end: new Date(t.scheduled_end!),
         task: t,
       }));
-    // Dedupe: identical (title, start, end, source) — sometimes iCloud returns
-    // the same event from multiple calendars.
+    // Safety-net dedupe across kinds: if (title + start + end) already exists,
+    // drop duplicates. Handles the case where iCloud returns the same event in
+    // multiple calendars, or a task's mirror event escaped the linked_task_id filter.
     const seen = new Set<string>();
-    const combined = [...a, ...b].filter((it) => {
-      const title =
-        it.kind === "event" ? it.event.title : it.task.title;
-      const key = `${title}|${it.start.getTime()}|${it.end.getTime()}|${it.kind}`;
+    const combined = [...b, ...a].filter((it) => {
+      const title = it.kind === "event" ? it.event.title : it.task.title;
+      const key = `${title.trim().toLowerCase()}|${it.start.getTime()}|${it.end.getTime()}`;
       if (seen.has(key)) return false;
       seen.add(key);
       return true;
