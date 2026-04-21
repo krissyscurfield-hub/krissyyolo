@@ -41,35 +41,30 @@ export async function POST(request: Request) {
     // Persist: set scheduled_start/end and status=SCHEDULED for placed tasks.
     // Tasks that were previously scheduled but didn't fit are pushed back to INBOX.
     const placedIds = new Set(result.assignments.map((a) => a.taskId));
-    const updates: Promise<any>[] = [];
 
-    for (const a of result.assignments) {
-      updates.push(
+    const placedUpdates = result.assignments.map((a) =>
+      supabase
+        .from("tasks")
+        .update({
+          scheduled_start: a.start.toISOString(),
+          scheduled_end: a.end.toISOString(),
+          status: "SCHEDULED",
+        })
+        .eq("id", a.taskId)
+        .eq("user_id", user.id)
+    );
+
+    const unscheduledUpdates = result.unscheduled
+      .filter((id) => !placedIds.has(id))
+      .map((id) =>
         supabase
           .from("tasks")
-          .update({
-            scheduled_start: a.start.toISOString(),
-            scheduled_end: a.end.toISOString(),
-            status: "SCHEDULED",
-          })
-          .eq("id", a.taskId)
+          .update({ scheduled_start: null, scheduled_end: null, status: "INBOX" })
+          .eq("id", id)
           .eq("user_id", user.id)
       );
-    }
 
-    for (const id of result.unscheduled) {
-      if (!placedIds.has(id)) {
-        updates.push(
-          supabase
-            .from("tasks")
-            .update({ scheduled_start: null, scheduled_end: null, status: "INBOX" })
-            .eq("id", id)
-            .eq("user_id", user.id)
-        );
-      }
-    }
-
-    await Promise.all(updates);
+    await Promise.all([...placedUpdates, ...unscheduledUpdates]);
 
     return NextResponse.json({
       placed: result.assignments.length,
