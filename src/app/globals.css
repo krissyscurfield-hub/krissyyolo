@@ -1,0 +1,33 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+html, body {
+  background: #FAFAF7;
+  color: #1C1C1E;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro", Inter, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  font-feature-settings: "ss01", "cv11";
+}
+
+* { box-sizing: border-box; }
+
+button { font: inherit; }
+
+::selection { background: #2F6FED22; }
+
+/* Soft scrollbars */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { background: #ECECE8; border-radius: 8px; }
+::-webkit-scrollbar-thumb:hover { background: #D8D8D2; }
+
+/* Utility: subtle line strike-through for completed tasks */
+.completed-strike {
+  text-decoration: line-through;
+  text-decoration-color: #8A8A87;
+  opacity: 0.55;
+}
