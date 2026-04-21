@@ -16,6 +16,51 @@ interface Props {
 
 const PX_PER_MIN = 1.2;
 
+type Item =
+  | { kind: "event"; id: string; start: Date; end: Date; event: CalendarEvent }
+  | { kind: "task"; id: string; start: Date; end: Date; task: Task };
+
+/**
+ * Resolve overlapping items into columns so they can render side-by-side.
+ * Returns each item enriched with { col, colCount } — where col is this item's
+ * column index in the group, and colCount is how many columns that group needs.
+ */
+function layoutColumns<T extends { start: Date; end: Date }>(
+  items: T[]
+): (T & { col: number; colCount: number })[] {
+  const sorted = [...items].sort((a, b) => a.start.getTime() - b.start.getTime());
+  const out: (T & { col: number; colCount: number })[] = [];
+  let group: (T & { col: number })[] = [];
+  let groupEnd = 0;
+
+  function flush() {
+    const count = group.reduce((m, g) => Math.max(m, g.col + 1), 0);
+    for (const g of group) out.push({ ...g, colCount: count });
+    group = [];
+  }
+
+  for (const it of sorted) {
+    const s = it.start.getTime();
+    if (group.length === 0 || s >= groupEnd) {
+      // start a new group
+      flush();
+      group = [{ ...it, col: 0 }];
+      groupEnd = it.end.getTime();
+      continue;
+    }
+    // find the first free column
+    const used = new Set(
+      group.filter((g) => g.end.getTime() > s).map((g) => g.col)
+    );
+    let col = 0;
+    while (used.has(col)) col++;
+    group.push({ ...it, col });
+    groupEnd = Math.max(groupEnd, it.end.getTime());
+  }
+  flush();
+  return out;
+}
+
 export function DayTimeline({
   date,
   events,
@@ -35,16 +80,47 @@ export function DayTimeline({
   const dayEnd = new Date(date);
   dayEnd.setHours(endHour, 0, 0, 0);
 
-  function topFor(d: Date | string) {
-    const t = new Date(d).getTime();
+  const items = useMemo<Item[]>(() => {
+    const a: Item[] = events.map((e) => ({
+      kind: "event" as const,
+      id: `e-${e.id}`,
+      start: new Date(e.starts_at),
+      end: new Date(e.ends_at),
+      event: e,
+    }));
+    const b: Item[] = tasks
+      .filter((t) => t.scheduled_start && t.scheduled_end)
+      .map((t) => ({
+        kind: "task" as const,
+        id: `t-${t.id}`,
+        start: new Date(t.scheduled_start!),
+        end: new Date(t.scheduled_end!),
+        task: t,
+      }));
+    // Dedupe: identical (title, start, end, source) — sometimes iCloud returns
+    // the same event from multiple calendars.
+    const seen = new Set<string>();
+    const combined = [...a, ...b].filter((it) => {
+      const title =
+        it.kind === "event" ? it.event.title : it.task.title;
+      const key = `${title}|${it.start.getTime()}|${it.end.getTime()}|${it.kind}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+    return layoutColumns(combined);
+  }, [events, tasks]);
+
+  function topFor(d: Date) {
+    const t = d.getTime();
     const minutes = Math.max(0, (t - dayStart.getTime()) / 60000);
     return minutes * PX_PER_MIN;
   }
 
-  function heightFor(start: Date | string, end: Date | string) {
-    const s = new Date(start).getTime();
-    const e = new Date(end).getTime();
-    return Math.max(20, ((e - s) / 60000) * PX_PER_MIN);
+  function heightFor(start: Date, end: Date) {
+    const s = start.getTime();
+    const e = end.getTime();
+    return Math.max(22, ((e - s) / 60000) * PX_PER_MIN);
   }
 
   const totalHeight = (endHour - startHour) * 60 * PX_PER_MIN;
@@ -56,7 +132,7 @@ export function DayTimeline({
   return (
     <div className="relative flex" style={{ height: totalHeight }}>
       {/* hour ruler */}
-      <div className="w-14 shrink-0 relative">
+      <div className="w-12 shrink-0 relative">
         {hours.map((h) => (
           <div
             key={h}
@@ -83,7 +159,7 @@ export function DayTimeline({
         {/* now line */}
         {nowTop >= 0 ? (
           <div
-            className="absolute left-0 right-0 flex items-center"
+            className="absolute left-0 right-0 flex items-center pointer-events-none z-10"
             style={{ top: nowTop }}
           >
             <div className="h-2 w-2 rounded-full bg-cadence -ml-1 shadow-[0_0_0_4px_rgba(47,111,237,.15)]" />
@@ -91,55 +167,67 @@ export function DayTimeline({
           </div>
         ) : null}
 
-        {/* events */}
-        {events.map((e) => (
-          <div
-            key={e.id}
-            className="absolute left-2 right-2 rounded-xl bg-white border border-mist px-3 py-2 shadow-card"
-            style={{
-              top: topFor(e.starts_at),
-              height: heightFor(e.starts_at, e.ends_at),
-            }}
-          >
-            <div className="text-[11px] text-muted">
-              {formatTime(e.starts_at)} · {e.calendar_name ?? "Calendar"}
-            </div>
-            <div className="text-sm font-medium truncate">{e.title}</div>
-          </div>
-        ))}
-
-        {/* scheduled tasks */}
-        {tasks.map((t) =>
-          t.scheduled_start && t.scheduled_end ? (
+        {/* items */}
+        {items.map((it) => {
+          const widthPct = 100 / it.colCount;
+          const leftPct = widthPct * it.col;
+          const top = topFor(it.start);
+          const height = heightFor(it.start, it.end);
+          if (it.kind === "event") {
+            return (
+              <div
+                key={it.id}
+                className="absolute rounded-xl bg-white border border-mist px-2.5 py-1.5 shadow-card overflow-hidden"
+                style={{
+                  top,
+                  height,
+                  left: `calc(${leftPct}% + 4px)`,
+                  width: `calc(${widthPct}% - 8px)`,
+                }}
+              >
+                <div className="text-[10px] text-muted truncate">
+                  {formatTime(it.start)} · {it.event.calendar_name ?? "Calendar"}
+                </div>
+                <div className="text-xs md:text-sm font-medium leading-tight line-clamp-2 break-words">
+                  {it.event.title}
+                </div>
+              </div>
+            );
+          }
+          const t = it.task;
+          const done = t.status === "DONE";
+          return (
             <button
-              key={t.id}
+              key={it.id}
               onClick={() => onTaskClick?.(t.id)}
               className={cn(
-                "absolute left-2 right-2 rounded-xl px-3 py-2 text-left transition",
-                t.status === "DONE"
-                  ? "bg-sage/10 border border-sage/40 text-muted"
-                  : "bg-cadence/8 border border-cadence/30 hover:bg-cadence/12"
+                "absolute rounded-xl px-2.5 py-1.5 text-left transition overflow-hidden",
+                done
+                  ? "border border-sage/40 text-muted"
+                  : "border border-cadence/30 hover:bg-cadence/12"
               )}
               style={{
-                top: topFor(t.scheduled_start),
-                height: heightFor(t.scheduled_start, t.scheduled_end),
-                backgroundColor: t.status === "DONE" ? "#6AA47915" : "#2F6FED12",
+                top,
+                height,
+                left: `calc(${leftPct}% + 4px)`,
+                width: `calc(${widthPct}% - 8px)`,
+                backgroundColor: done ? "#6AA47915" : "#2F6FED12",
               }}
             >
-              <div className="text-[11px] text-muted">
-                {formatTime(t.scheduled_start)} · {t.estimated_minutes}m
+              <div className="text-[10px] text-muted truncate">
+                {formatTime(it.start)} · {t.estimated_minutes}m
               </div>
               <div
                 className={cn(
-                  "text-sm font-medium truncate",
-                  t.status === "DONE" && "completed-strike"
+                  "text-xs md:text-sm font-medium leading-tight line-clamp-2 break-words",
+                  done && "completed-strike"
                 )}
               >
                 {t.title}
               </div>
             </button>
-          ) : null
-        )}
+          );
+        })}
       </div>
     </div>
   );
