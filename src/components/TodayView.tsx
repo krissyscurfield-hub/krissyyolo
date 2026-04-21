@@ -1,8 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Sparkles, Moon, RefreshCw } from "lucide-react";
+import { Sparkles, Moon, RefreshCw, ArrowRight, Calendar as CalIcon } from "lucide-react";
 import type { Task, CalendarEvent } from "@/lib/types";
 import { QuickAdd } from "./QuickAdd";
 import { DayTimeline } from "./DayTimeline";
@@ -17,10 +18,12 @@ export function TodayView({
   initialEvents,
   initialTasks,
   dateISO,
+  calendarConnected = true,
 }: {
   initialEvents: CalendarEvent[];
   initialTasks: Task[];
   dateISO: string;
+  calendarConnected?: boolean;
 }) {
   const router = useRouter();
   const date = new Date(dateISO);
@@ -145,6 +148,24 @@ export function TodayView({
           </button>
         </div>
       </header>
+
+      {!calendarConnected ? (
+        <Link
+          href="/settings"
+          className="flex items-center gap-3 rounded-2xl bg-cadence/8 border border-cadence/25 px-4 py-3 hover:bg-cadence/12 transition active:scale-[0.99]"
+        >
+          <div className="h-9 w-9 rounded-xl bg-cadence/15 flex items-center justify-center shrink-0">
+            <CalIcon size={18} className="text-cadence" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="text-sm font-medium text-ink">Connect Apple Calendar</div>
+            <div className="text-xs text-muted mt-0.5">
+              Two-minute setup. Pull your events in and save scheduled tasks to iCloud.
+            </div>
+          </div>
+          <ArrowRight size={16} className="text-cadence shrink-0" />
+        </Link>
+      ) : null}
 
       <QuickAdd onAdd={addTask} />
 

@@ -11,7 +11,7 @@ export default async function TodayPage() {
   const from = startOfLocalDay(today).toISOString();
   const to = endOfLocalDay(today).toISOString();
 
-  const [{ data: events }, { data: tasks }] = await Promise.all([
+  const [{ data: events }, { data: tasks }, { data: account }] = await Promise.all([
     supabase
       .from("calendar_events")
       .select("*")
@@ -27,6 +27,7 @@ export default async function TodayPage() {
         `and(scheduled_start.gte.${from},scheduled_start.lte.${to}),status.eq.INBOX,must_do_today.eq.true`
       )
       .order("priority"),
+    supabase.from("calendar_accounts").select("id").eq("user_id", user.id).maybeSingle(),
   ]);
 
   return (
@@ -34,6 +35,7 @@ export default async function TodayPage() {
       initialEvents={(events ?? []) as CalendarEvent[]}
       initialTasks={(tasks ?? []) as Task[]}
       dateISO={today.toISOString()}
+      calendarConnected={!!account}
     />
   );
 }
