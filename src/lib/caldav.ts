@@ -2,7 +2,9 @@
 // Auth: Apple ID email + app-specific password (appleid.apple.com → Sign-In and Security → App-Specific Passwords).
 // We read all subscribed calendars and write back only to a dedicated "Cadence" calendar so user data stays reversible.
 
-import { createDAVClient, type DAVClient } from "tsdav";
+import { createDAVClient } from "tsdav";
+
+type DAVClient = Awaited<ReturnType<typeof createDAVClient>>;
 import ICAL from "ical.js";
 import { v4 as uuid } from "uuid";
 
