@@ -25,7 +25,7 @@ export function Sidebar() {
   }
 
   return (
-    <aside className="w-56 shrink-0 border-r border-mist bg-paper flex flex-col">
+    <aside className="hidden md:flex w-56 shrink-0 border-r border-mist bg-paper flex-col">
       <div className="px-5 py-6">
         <div className="text-lg font-display font-semibold tracking-tight">Cadence</div>
       </div>

@@ -30,9 +30,9 @@ export function WeekView({
 
   const today = new Date();
   return (
-    <div className="mx-auto max-w-7xl px-6 py-8">
-      <h1 className="text-2xl font-display font-semibold mb-6">Week</h1>
-      <div className="grid grid-cols-7 gap-3">
+    <div className="mx-auto max-w-7xl px-4 md:px-6 py-4 md:py-8">
+      <h1 className="text-2xl md:text-3xl font-display font-semibold mb-5 md:mb-6">Week</h1>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-3">
         {days.map((d) => {
           const dayEvents = events.filter((e) => inDay(e.starts_at, d));
           const dayTasks = tasks.filter(

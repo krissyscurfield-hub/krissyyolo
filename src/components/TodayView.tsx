@@ -100,48 +100,58 @@ export function TodayView({
   }
 
   return (
-    <div className="mx-auto max-w-5xl px-6 py-8 space-y-6">
-      <header className="flex items-end justify-between">
-        <div>
-          <div className="text-xs text-muted uppercase tracking-wider">
-            {date.toLocaleDateString(undefined, { weekday: "long" })}
+    <div className="mx-auto max-w-5xl px-4 md:px-6 py-4 md:py-8 space-y-5 md:space-y-6">
+      <header className="space-y-3">
+        <div className="flex items-end justify-between">
+          <div>
+            <div className="text-xs text-muted uppercase tracking-wider">
+              {date.toLocaleDateString(undefined, { weekday: "long" })}
+            </div>
+            <h1 className="text-2xl md:text-3xl font-display font-semibold">
+              {date.toLocaleDateString(undefined, { month: "long", day: "numeric" })}
+            </h1>
           </div>
-          <h1 className="text-2xl font-display font-semibold">
-            {date.toLocaleDateString(undefined, { month: "long", day: "numeric" })}
-          </h1>
-        </div>
-        <div className="flex items-center gap-2">
           <button
             onClick={syncCalendar}
             disabled={syncing}
-            className="rounded-xl bg-white shadow-card px-3 py-2 text-sm inline-flex items-center gap-2 hover:bg-paper transition disabled:opacity-50"
+            aria-label="Sync"
+            className="md:hidden rounded-full bg-white shadow-card p-2.5 hover:bg-paper transition disabled:opacity-50"
           >
-            <RefreshCw size={14} className={syncing ? "animate-spin" : ""} />
-            Sync
+            <RefreshCw size={16} className={syncing ? "animate-spin" : ""} />
           </button>
+        </div>
+        <div className="flex items-center gap-2">
           <button
             onClick={() => setPlanOpen(true)}
-            className="rounded-xl bg-ink text-white px-3 py-2 text-sm inline-flex items-center gap-2 hover:opacity-90 transition"
+            className="flex-1 md:flex-initial rounded-xl bg-ink text-white px-4 py-2.5 text-sm font-medium inline-flex items-center justify-center gap-2 hover:opacity-90 transition"
           >
             <Sparkles size={14} />
             Plan my day
           </button>
           <button
             onClick={() => setShutdownOpen(true)}
-            className="rounded-xl bg-white shadow-card px-3 py-2 text-sm inline-flex items-center gap-2 hover:bg-paper transition"
+            className="flex-1 md:flex-initial rounded-xl bg-white shadow-card px-4 py-2.5 text-sm font-medium inline-flex items-center justify-center gap-2 hover:bg-paper transition"
           >
             <Moon size={14} />
             Shutdown
           </button>
+          <button
+            onClick={syncCalendar}
+            disabled={syncing}
+            className="hidden md:inline-flex rounded-xl bg-white shadow-card px-4 py-2.5 text-sm font-medium items-center gap-2 hover:bg-paper transition disabled:opacity-50"
+          >
+            <RefreshCw size={14} className={syncing ? "animate-spin" : ""} />
+            Sync
+          </button>
         </div>
       </header>
 
-      <QuickAdd onAdd={addTask} autoFocus />
+      <QuickAdd onAdd={addTask} />
 
       <MustDoStrip tasks={tasks} onComplete={complete} />
 
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6">
-        <section className="rounded-2xl bg-white shadow-card p-4 overflow-auto">
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-4 md:gap-6">
+        <section className="rounded-2xl bg-white shadow-card p-3 md:p-4 overflow-auto">
           <DayTimeline
             date={date}
             events={events}

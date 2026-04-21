@@ -42,9 +42,9 @@ export function InboxView({ initial }: { initial: Task[] }) {
   const p3 = tasks.filter((t) => t.priority === 3);
 
   return (
-    <div className="mx-auto max-w-3xl px-6 py-8 space-y-6">
-      <h1 className="text-2xl font-display font-semibold">Inbox</h1>
-      <QuickAdd onAdd={addTask} autoFocus />
+    <div className="mx-auto max-w-3xl px-4 md:px-6 py-4 md:py-8 space-y-5 md:space-y-6">
+      <h1 className="text-2xl md:text-3xl font-display font-semibold">Inbox</h1>
+      <QuickAdd onAdd={addTask} />
       <Section title="P1" count={p1.length}>
         {p1.map((t) => (
           <TaskCard key={t.id} task={t} onComplete={complete} />
