@@ -1,6 +1,7 @@
 import { requireUser } from "@/lib/supabase/server";
 import { CalendarConnectForm } from "@/components/CalendarConnectForm";
 import { WorkHoursForm } from "@/components/WorkHoursForm";
+import { RecurrencesManager } from "@/components/RecurrencesManager";
 
 export const dynamic = "force-dynamic";
 
@@ -34,6 +35,13 @@ export default async function SettingsPage() {
             quiet_hours_end: profile?.quiet_hours_end ?? "07:00",
           }}
         />
+      </section>
+
+      <section className="space-y-3">
+        <h2 className="text-sm font-medium text-muted uppercase tracking-wider">
+          Recurring tasks
+        </h2>
+        <RecurrencesManager />
       </section>
 
       <section className="rounded-2xl bg-white shadow-card p-6">

@@ -31,14 +31,30 @@ export default function SignInPage() {
     setLoading(true);
     setError(null);
     const supabase = createClient();
-    const { error } = await supabase.auth.verifyOtp({
-      email,
-      token: code.trim(),
-      type: "email",
-    });
+
+    // Support both flows: 6-digit OTP ("email") and token-hash ("magiclink").
+    // We try OTP first, fall back to token_hash if it looks hash-shaped.
+    const trimmed = code.trim();
+    const isNumeric = /^\d+$/.test(trimmed);
+
+    let result;
+    if (isNumeric) {
+      result = await supabase.auth.verifyOtp({
+        email,
+        token: trimmed,
+        type: "email",
+      });
+    } else {
+      // Long hash from a magic-link URL
+      result = await supabase.auth.verifyOtp({
+        token_hash: trimmed,
+        type: "magiclink",
+      });
+    }
+
     setLoading(false);
-    if (error) {
-      setError(error.message);
+    if (result.error) {
+      setError(result.error.message);
       return;
     }
     router.push("/today");
@@ -76,7 +92,7 @@ export default function SignInPage() {
               {loading ? "Sending…" : "Send login code"}
             </button>
             <p className="text-xs text-muted text-center">
-              We email you a 6-digit code. No password, no link.
+              We email you a code. No password.
             </p>
           </form>
         ) : (
@@ -84,28 +100,25 @@ export default function SignInPage() {
             <div>
               <div className="text-sm font-medium">Enter your code</div>
               <div className="text-xs text-muted mt-1">
-                We sent a 6-digit code to <span className="text-ink">{email}</span>. It arrives in under 30 seconds.
+                We sent a code to <span className="text-ink">{email}</span>. Paste whatever you got in the email.
               </div>
             </div>
             <label className="block">
               <span className="text-sm text-muted">Code</span>
               <input
-                inputMode="numeric"
-                pattern="[0-9]*"
-                maxLength={6}
                 autoComplete="one-time-code"
                 required
                 autoFocus
                 value={code}
-                onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
+                onChange={(e) => setCode(e.target.value)}
                 placeholder="123456"
-                className="mt-1 w-full rounded-xl border border-mist px-4 py-3 outline-none focus:border-cadence transition text-center text-2xl font-mono tracking-[0.4em]"
+                className="mt-1 w-full rounded-xl border border-mist px-4 py-3 outline-none focus:border-cadence transition font-mono tracking-wider"
               />
             </label>
             {error ? <div className="text-sm text-amber">{error}</div> : null}
             <button
               type="submit"
-              disabled={loading || code.length !== 6}
+              disabled={loading || !code.trim()}
               className="w-full rounded-xl bg-ink text-white py-3 font-medium hover:opacity-90 disabled:opacity-50 transition"
             >
               {loading ? "Verifying…" : "Sign in"}

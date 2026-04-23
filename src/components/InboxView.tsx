@@ -9,17 +9,20 @@ import { parseQuickAdd } from "@/lib/parse";
 export function InboxView({ initial }: { initial: Task[] }) {
   const [tasks, setTasks] = useState<Task[]>(initial);
 
-  async function addTask(raw: string) {
-    const parsed = parseQuickAdd(raw);
+  async function addTask(input: { raw: string; priority: 1 | 2 | 3; dueDate: string | null }) {
+    const parsed = parseQuickAdd(input.raw);
+    const priority = input.priority !== 3 ? input.priority : parsed.priority;
+    const dueDate =
+      input.dueDate ?? (parsed.dueDate ? parsed.dueDate.toISOString().slice(0, 10) : null);
     const res = await fetch("/api/tasks", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         title: parsed.title,
-        priority: parsed.priority,
+        priority,
         scheduled_start: parsed.scheduledStart?.toISOString() ?? null,
         estimated_minutes: parsed.estimatedMinutes ?? 30,
-        due_date: parsed.dueDate ? parsed.dueDate.toISOString().slice(0, 10) : null,
+        due_date: dueDate,
       }),
     });
     if (res.ok) {
@@ -37,6 +40,20 @@ export function InboxView({ initial }: { initial: Task[] }) {
     await fetch(`/api/tasks/${id}/complete`, { method: "POST" });
   }
 
+  async function deleteTask(id: string) {
+    setTasks((prev) => prev.filter((t) => t.id !== id));
+    await fetch(`/api/tasks/${id}`, { method: "DELETE" });
+  }
+
+  async function setPriority(id: string, p: 1 | 2 | 3) {
+    setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, priority: p } : t)));
+    await fetch(`/api/tasks/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ priority: p }),
+    });
+  }
+
   const p1 = tasks.filter((t) => t.priority === 1);
   const p2 = tasks.filter((t) => t.priority === 2);
   const p3 = tasks.filter((t) => t.priority === 3);
@@ -47,17 +64,35 @@ export function InboxView({ initial }: { initial: Task[] }) {
       <QuickAdd onAdd={addTask} />
       <Section title="P1" count={p1.length}>
         {p1.map((t) => (
-          <TaskCard key={t.id} task={t} onComplete={complete} />
+          <TaskCard
+            key={t.id}
+            task={t}
+            onComplete={complete}
+            onDelete={deleteTask}
+            onSetPriority={setPriority}
+          />
         ))}
       </Section>
       <Section title="P2" count={p2.length}>
         {p2.map((t) => (
-          <TaskCard key={t.id} task={t} onComplete={complete} />
+          <TaskCard
+            key={t.id}
+            task={t}
+            onComplete={complete}
+            onDelete={deleteTask}
+            onSetPriority={setPriority}
+          />
         ))}
       </Section>
       <Section title="P3" count={p3.length}>
         {p3.map((t) => (
-          <TaskCard key={t.id} task={t} onComplete={complete} />
+          <TaskCard
+            key={t.id}
+            task={t}
+            onComplete={complete}
+            onDelete={deleteTask}
+            onSetPriority={setPriority}
+          />
         ))}
       </Section>
       {tasks.length === 0 ? (

@@ -1,6 +1,7 @@
 import { TodayView } from "@/components/TodayView";
 import { requireUser } from "@/lib/supabase/server";
 import { endOfLocalDay, startOfLocalDay } from "@/lib/utils";
+import { ensureTodaysRecurrences } from "@/lib/generateRecurrences";
 import type { Task, CalendarEvent } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -8,6 +9,10 @@ export const dynamic = "force-dynamic";
 export default async function TodayPage() {
   const { supabase, user } = await requireUser();
   const today = new Date();
+
+  // Generate any recurring tasks that should exist today (idempotent).
+  await ensureTodaysRecurrences(supabase, user.id, today);
+
   const from = startOfLocalDay(today).toISOString();
   const to = endOfLocalDay(today).toISOString();
 

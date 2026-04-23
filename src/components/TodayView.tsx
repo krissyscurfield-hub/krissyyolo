@@ -11,6 +11,7 @@ import { MustDoStrip } from "./MustDoStrip";
 import { TaskCard } from "./TaskCard";
 import { DailyPlanModal } from "./DailyPlanModal";
 import { ShutdownModal } from "./ShutdownModal";
+import { DailyVerse } from "./DailyVerse";
 import { parseQuickAdd } from "@/lib/parse";
 import { startOfLocalDay, endOfLocalDay } from "@/lib/utils";
 
@@ -52,23 +53,45 @@ export function TodayView({
     [tasks]
   );
 
-  async function addTask(raw: string) {
-    const parsed = parseQuickAdd(raw);
+  async function addTask(input: { raw: string; priority: 1 | 2 | 3; dueDate: string | null }) {
+    const parsed = parseQuickAdd(input.raw);
+    // UI values win over parsed shortcuts
+    const priority = input.priority !== 3 ? input.priority : parsed.priority;
+    const dueDate =
+      input.dueDate ?? (parsed.dueDate ? parsed.dueDate.toISOString().slice(0, 10) : null);
     const res = await fetch("/api/tasks", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         title: parsed.title,
-        priority: parsed.priority,
+        priority,
         scheduled_start: parsed.scheduledStart?.toISOString() ?? null,
         estimated_minutes: parsed.estimatedMinutes ?? 30,
-        due_date: parsed.dueDate ? parsed.dueDate.toISOString().slice(0, 10) : null,
+        due_date: dueDate,
       }),
     });
     if (res.ok) {
       const t = await res.json();
       setTasks((prev) => [t, ...prev]);
     }
+  }
+
+  async function deleteTask(id: string) {
+    const before = tasks;
+    setTasks((prev) => prev.filter((t) => t.id !== id));
+    const res = await fetch(`/api/tasks/${id}`, { method: "DELETE" });
+    if (!res.ok) setTasks(before);
+  }
+
+  async function setPriority(id: string, p: 1 | 2 | 3) {
+    const before = tasks;
+    setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, priority: p } : t)));
+    const res = await fetch(`/api/tasks/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ priority: p }),
+    });
+    if (!res.ok) setTasks(before);
   }
 
   async function complete(id: string) {
@@ -149,6 +172,8 @@ export function TodayView({
         </div>
       </header>
 
+      <DailyVerse />
+
       {!calendarConnected ? (
         <Link
           href="/settings"
@@ -197,6 +222,8 @@ export function TodayView({
                   task={t}
                   onComplete={complete}
                   onPromote={promote}
+                  onDelete={deleteTask}
+                  onSetPriority={setPriority}
                   compact
                 />
               ))
