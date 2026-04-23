@@ -16,7 +16,7 @@ export default async function TodayPage() {
   const from = startOfLocalDay(today).toISOString();
   const to = endOfLocalDay(today).toISOString();
 
-  const [{ data: events }, { data: tasks }, { data: account }] = await Promise.all([
+  const [{ data: events }, { data: tasks }, { data: account }, { data: profile }] = await Promise.all([
     supabase
       .from("calendar_events")
       .select("*")
@@ -33,7 +33,13 @@ export default async function TodayPage() {
       )
       .order("priority"),
     supabase.from("calendar_accounts").select("id").eq("user_id", user.id).maybeSingle(),
+    supabase.from("profiles").select("email").eq("id", user.id).maybeSingle(),
   ]);
+
+  const userName = profile?.email ? profile.email.split("@")[0].split(".")[0] : undefined;
+  const userDisplay = userName
+    ? userName.charAt(0).toUpperCase() + userName.slice(1)
+    : undefined;
 
   return (
     <TodayView
@@ -41,6 +47,7 @@ export default async function TodayPage() {
       initialTasks={(tasks ?? []) as Task[]}
       dateISO={today.toISOString()}
       calendarConnected={!!account}
+      userName={userDisplay}
     />
   );
 }

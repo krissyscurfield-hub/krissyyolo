@@ -1,4 +1,4 @@
-import { createServerClient, type CookieOptions } from "@supabase/ssr";
+import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 export async function updateSession(request: NextRequest) {
@@ -9,29 +9,30 @@ export async function updateSession(request: NextRequest) {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        get(name: string) {
-          return request.cookies.get(name)?.value;
+        getAll() {
+          return request.cookies.getAll();
         },
-        set(name: string, value: string, options: CookieOptions) {
-          request.cookies.set({ name, value, ...options });
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value }) =>
+            request.cookies.set(name, value)
+          );
           response = NextResponse.next({ request });
-          response.cookies.set({ name, value, ...options });
-        },
-        remove(name: string, options: CookieOptions) {
-          request.cookies.set({ name, value: "", ...options });
-          response = NextResponse.next({ request });
-          response.cookies.set({ name, value: "", ...options });
+          cookiesToSet.forEach(({ name, value, options }) =>
+            response.cookies.set(name, value, options)
+          );
         },
       },
     }
   );
 
+  // Trigger a token refresh if needed — keeps the session alive for the refresh-token lifetime (~60 days).
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
   const url = request.nextUrl.clone();
-  const isAuthRoute = url.pathname.startsWith("/sign-in") || url.pathname.startsWith("/auth");
+  const isAuthRoute =
+    url.pathname.startsWith("/sign-in") || url.pathname.startsWith("/auth");
 
   if (!user && !isAuthRoute) {
     url.pathname = "/sign-in";

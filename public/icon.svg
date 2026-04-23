@@ -8,12 +8,26 @@
       <stop offset="0.88" stop-color="#FFD44A"/>
       <stop offset="1" stop-color="#FFEE82"/>
     </linearGradient>
-    <radialGradient id="sun" cx="50%" cy="78%" r="42%">
-      <stop offset="0" stop-color="#FFF0A0" stop-opacity="0.9"/>
+    <radialGradient id="sun" cx="50%" cy="80%" r="48%">
+      <stop offset="0" stop-color="#FFF0A0" stop-opacity="0.85"/>
       <stop offset="1" stop-color="#FFF0A0" stop-opacity="0"/>
     </radialGradient>
   </defs>
   <rect width="512" height="512" rx="112" fill="url(#sky)"/>
   <rect width="512" height="512" rx="112" fill="url(#sun)"/>
-  <path d="M 358 137 A 143 143 0 1 0 358 335" stroke="#1C1C1E" stroke-width="67" stroke-linecap="round" fill="none"/>
+  <!-- Book -->
+  <g>
+    <rect x="138" y="113" width="236" height="277" rx="30" fill="#161618"/>
+    <rect x="154" y="148" width="10" height="207" fill="#0a0a0c"/>
+    <!-- row 1 (checked) -->
+    <rect x="180" y="188" width="32" height="32" rx="7" fill="#66d176"/>
+    <polyline points="187,206 198,215 211,195" fill="none" stroke="#ffffff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="228" y="197" width="124" height="10" rx="5" fill="#fafaf7" fill-opacity="0.5"/>
+    <!-- row 2 -->
+    <rect x="180" y="246" width="32" height="32" rx="7" fill="none" stroke="#fafaf7" stroke-width="3"/>
+    <rect x="228" y="255" width="124" height="10" rx="5" fill="#fafaf7" fill-opacity="0.9"/>
+    <!-- row 3 -->
+    <rect x="180" y="304" width="32" height="32" rx="7" fill="none" stroke="#fafaf7" stroke-width="3"/>
+    <rect x="228" y="313" width="104" height="10" rx="5" fill="#fafaf7" fill-opacity="0.9"/>
+  </g>
 </svg>
